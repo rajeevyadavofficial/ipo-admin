@@ -1,11 +1,22 @@
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import LoginScreen from './screens/LoginScreen';
+import IPOListScreen from './screens/IPOListScreen';
+
+const API_BASE_URL = 'https://ipo-backend-d8nv.onrender.com/api';
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   return (
     <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
+      {!isLoggedIn ? (
+        <LoginScreen onLogin={() => setIsLoggedIn(true)} />
+      ) : (
+        <IPOListScreen apiUrl={API_BASE_URL} />
+      )}
     </View>
   );
 }
@@ -13,8 +24,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
   },
 });
