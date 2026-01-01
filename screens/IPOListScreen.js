@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
-export default function IPOListScreen({ apiUrl }) {
+export default function IPOListScreen({ apiUrl, onNavigate }) {
   const [ipos, setIpos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -213,8 +213,18 @@ export default function IPOListScreen({ apiUrl }) {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>IPO Management</Text>
-        <Text style={styles.headerSubtitle}>{ipos.length} IPOs</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>IPO Management</Text>
+            <Text style={styles.headerSubtitle}>{ipos.length} IPOs</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            onPress={() => onNavigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={28} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* IPO List */}
@@ -376,6 +386,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -385,6 +400,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
+  },
+  settingsButton: {
+    padding: 4,
   },
   list: {
     padding: 16,
