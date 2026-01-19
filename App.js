@@ -5,7 +5,8 @@ import LoginScreen from './screens/LoginScreen';
 import IPOListScreen from './screens/IPOListScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
-const API_BASE_URL = 'https://ipo-backend-d8nv.onrender.com/api';
+import { API_BASE_URL } from './config';
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
