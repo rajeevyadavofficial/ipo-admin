@@ -11,6 +11,7 @@ import {
   TextInput,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -499,15 +500,20 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
 
       {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{editingIPO ? 'Edit IPO' : 'Add New IPO'}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={28} color="white" />
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editingIPO ? 'Edit IPO' : 'Add New IPO'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.form}>
+            <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
             <Text style={styles.label}>Company Name *</Text>
             <TextInput
               style={styles.input}
@@ -592,8 +598,9 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               <Text style={styles.saveButtonText}>Save IPO</Text>
             </TouchableOpacity>
-          </ScrollView>
-        </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -729,7 +736,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
+    bottom: 80,
     width: 60,
     height: 60,
     borderRadius: 30,
