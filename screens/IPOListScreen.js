@@ -14,6 +14,227 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { bsToAd, adToBs, nepaliMonths, englishMonths } from '../utils/dateConverter';
+
+// --- Helper Components ---
+
+const TypeSelector = ({ types, selectedType, onSelect, onNewType }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newType, setNewType] = useState('');
+
+  return (
+    <View style={styles.selectorContainer}>
+      <Text style={styles.label}>IPO Type *</Text>
+      <TouchableOpacity 
+        style={styles.dropdownTrigger} 
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.dropdownTriggerText}>{selectedType || 'Select Type'}</Text>
+        <Ionicons name="chevron-down" size={20} color="#666" />
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.dropdownModal}>
+            <View style={styles.modalHeaderSmall}>
+              <Text style={styles.modalTitleSmall}>Select Type</Text>
+              <TouchableOpacity onPress={() => { setModalVisible(false); setIsAdding(false); }}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {isAdding ? (
+              <View style={styles.addingContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter new type..."
+                  value={newType}
+                  onChangeText={setNewType}
+                  autoFocus
+                />
+                <TouchableOpacity 
+                  style={styles.saveSmallBtn}
+                  onPress={() => {
+                    if (newType.trim()) {
+                      onNewType(newType.trim());
+                      setNewType('');
+                      setIsAdding(false);
+                      setModalVisible(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.saveSmallBtnText}>Add Type</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView style={styles.typeList}>
+                {types.map((type) => (
+                  <TouchableOpacity 
+                    key={type} 
+                    style={[styles.typeItem, selectedType === type && styles.typeItemActive]}
+                    onPress={() => {
+                      onSelect(type);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={[styles.typeItemText, selectedType === type && styles.typeItemTextActive]}>
+                      {type}
+                    </Text>
+                    {selectedType === type && <Ionicons name="checkmark" size={20} color="#6200EE" />}
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity 
+                  style={styles.addTypeBtn}
+                  onPress={() => setIsAdding(true)}
+                >
+                  <Ionicons name="plus-circle-outline" size={20} color="#6200EE" />
+                  <Text style={styles.addTypeBtnText}>Add Custom Type</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const NepaliDatePicker = ({ label, date, time, onChange, onTimeChange }) => {
+  const [mode, setMode] = useState('BS'); // 'BS' or 'AD'
+  const bsDate = adToBs(date) || { year: 2080, month: 1, day: 1 };
+  
+  const [year, setYear] = useState(bsDate.year.toString());
+  const [day, setDay] = useState(bsDate.day.toString());
+  const [monthModalVisible, setMonthModalVisible] = useState(false);
+
+  // Sync state when date changes from outside (e.g. initial load)
+  useEffect(() => {
+    if (mode === 'BS') {
+      const bs = adToBs(date);
+      if (bs) {
+        setYear(bs.year.toString());
+        setDay(bs.day.toString());
+      }
+    } else {
+      setYear(date.getFullYear().toString());
+      setDay(date.getDate().toString());
+    }
+  }, [date, mode]);
+
+  const updateDate = (newYear, newMonthIdx, newDay, currentMode) => {
+    const y = parseInt(newYear);
+    const d = parseInt(newDay);
+    if (isNaN(y) || isNaN(d)) return;
+
+    if (currentMode === 'BS') {
+      const ad = bsToAd(y, newMonthIdx + 1, d);
+      if (ad) onChange(ad);
+    } else {
+      const ad = new Date(y, newMonthIdx, d);
+      if (!isNaN(ad.getTime())) onChange(ad);
+    }
+  };
+
+  const currentMonthIdx = mode === 'BS' ? bsDate.month - 1 : date.getMonth();
+  const months = mode === 'BS' ? nepaliMonths : englishMonths;
+
+  return (
+    <View style={styles.datePickerContainer}>
+      <View style={styles.dateHeaderRow}>
+        <Text style={styles.label}>{label} *</Text>
+        <View style={styles.modeToggle}>
+          <TouchableOpacity 
+            style={[styles.modeBtn, mode === 'BS' && styles.modeBtnActive]}
+            onPress={() => setMode('BS')}
+          >
+            <Text style={[styles.modeBtnText, mode === 'BS' && styles.modeBtnTextActive]}>BS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.modeBtn, mode === 'AD' && styles.modeBtnActive]}
+            onPress={() => setMode('AD')}
+          >
+            <Text style={[styles.modeBtnText, mode === 'AD' && styles.modeBtnTextActive]}>AD</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.dateInputsRow}>
+        <View style={styles.yearInputWrap}>
+          <Text style={styles.tinyLabel}>Year</Text>
+          <TextInput
+            style={styles.yearInput}
+            value={year}
+            keyboardType="numeric"
+            maxLength={4}
+            onChangeText={(text) => {
+              setYear(text);
+              if (text.length === 4) updateDate(text, currentMonthIdx, day, mode);
+            }}
+          />
+        </View>
+
+        <View style={styles.monthInputWrap}>
+          <Text style={styles.tinyLabel}>Month</Text>
+          <TouchableOpacity 
+            style={styles.monthSelector}
+            onPress={() => setMonthModalVisible(true)}
+          >
+            <Text style={styles.monthSelectorText}>{months[currentMonthIdx]}</Text>
+            <Ionicons name="chevron-down" size={14} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.dayInputWrap}>
+          <Text style={styles.tinyLabel}>Day</Text>
+          <TextInput
+            style={styles.dayInput}
+            value={day}
+            keyboardType="numeric"
+            maxLength={2}
+            onChangeText={(text) => {
+              setDay(text);
+              updateDate(year, currentMonthIdx, text, mode);
+            }}
+          />
+        </View>
+
+        <View style={styles.timeInputWrap}>
+          <Text style={styles.tinyLabel}>Time</Text>
+          <TextInput
+            style={styles.timeInput}
+            value={time}
+            placeholder="10:00"
+            onChangeText={onTimeChange}
+          />
+        </View>
+      </View>
+
+      <Modal visible={monthModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.monthModal}>
+            <ScrollView>
+              {months.map((m, idx) => (
+                <TouchableOpacity 
+                  key={m} 
+                  style={styles.monthItem}
+                  onPress={() => {
+                    updateDate(year, idx, day, mode);
+                    setMonthModalVisible(false);
+                  }}
+                >
+                  <Text style={[styles.monthItemText, currentMonthIdx === idx && styles.monthItemTextActive]}>
+                    {m}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
 
 export default function IPOListScreen({ apiUrl, onNavigate }) {
   const [ipos, setIpos] = useState([]);
@@ -21,21 +242,35 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingIPO, setEditingIPO] = useState(null);
+  const [activeTab, setActiveTab] = useState('Open');
+  const [types, setTypes] = useState(['IPO', 'FPO', 'Right Share', 'Debenture', 'Mutual Fund']);
   const [formData, setFormData] = useState({
     company: '',
     type: 'IPO',
-    customType: '',
     units: '',
     price: '',
-    openingDate: '',
-    closingDate: '',
-    status: 'Upcoming',
+    openingDate: new Date(),
+    openingTime: '10:00',
+    closingDate: new Date(),
+    closingTime: '17:00',
   });
-  const [isCustomType, setIsCustomType] = useState(false);
 
   useEffect(() => {
     fetchIPOs();
+    fetchTypes();
   }, []);
+
+  const fetchTypes = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/admin/ipos/types`);
+      const data = await response.json();
+      if (data.success) {
+        setTypes(data.data);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch types');
+    }
+  };
 
   const fetchIPOs = async () => {
     try {
@@ -56,34 +291,33 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
     setEditingIPO(null);
     setFormData({
       company: '',
-      type: 'IPO',
-      customType: '',
+      type: types[0] || 'IPO',
       units: '',
       price: '',
-      openingDate: '',
-      closingDate: '',
-      status: 'Upcoming',
+      openingDate: new Date(),
+      openingTime: '10:00',
+      closingDate: new Date(),
+      closingTime: '17:00',
     });
-    setIsCustomType(false);
     setModalVisible(true);
   };
 
   const handleEdit = (ipo) => {
     setEditingIPO(ipo);
     
-    const isPredefined = ['IPO', 'FPO', 'Right Share', 'Debenture'].includes(ipo.type);
-    
+    const opDate = new Date(ipo.openingDate);
+    const clDate = new Date(ipo.closingDate);
+
     setFormData({
       company: ipo.company,
-      type: isPredefined ? ipo.type : 'Custom',
-      customType: isPredefined ? '' : ipo.type,
-      units: ipo.units.replace(/,/g, ''), // Remove commas for editing
-      price: ipo.price.replace('Rs. ', ''), // Remove prefix for editing
-      openingDate: ipo.openingDate,
-      closingDate: ipo.closingDate,
-      status: ipo.status,
+      type: ipo.type,
+      units: ipo.units.replace(/,/g, ''),
+      price: ipo.price.replace('Rs. ', ''),
+      openingDate: opDate,
+      openingTime: `${opDate.getHours().toString().padStart(2, '0')}:${opDate.getMinutes().toString().padStart(2, '0')}`,
+      closingDate: clDate,
+      closingTime: `${clDate.getHours().toString().padStart(2, '0')}:${clDate.getMinutes().toString().padStart(2, '0')}`,
     });
-    setIsCustomType(!isPredefined);
     setModalVisible(true);
   };
 
@@ -94,25 +328,26 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
     }
 
     // Format data before saving
-    const finalType = isCustomType ? formData.customType : formData.type;
-    if (isCustomType && !finalType) {
-      Alert.alert('Error', 'Please enter a custom type');
-      return;
-    }
-
-    // Format units with commas
     const formattedUnits = Number(formData.units).toLocaleString('en-IN');
-    
-    // Format price with Rs. prefix if not present
-    const formattedPrice = formData.price.startsWith('Rs.') 
-      ? formData.price 
-      : `Rs. ${formData.price}`;
+    const formattedPrice = formData.price.startsWith('Rs.') ? formData.price : `Rs. ${formData.price}`;
+
+    // Combine Date and Time
+    const combineDateTime = (date, timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const newDate = new Date(date);
+      newDate.setHours(hours, minutes, 0, 0);
+      return newDate;
+    };
+
+    const finalOpeningDate = combineDateTime(formData.openingDate, formData.openingTime);
+    const finalClosingDate = combineDateTime(formData.closingDate, formData.closingTime);
 
     const dataToSave = {
       ...formData,
-      type: finalType,
       units: formattedUnits,
       price: formattedPrice,
+      openingDate: finalOpeningDate,
+      closingDate: finalClosingDate,
     };
 
     try {
@@ -182,8 +417,8 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
       <Text style={styles.type}>{item.type}</Text>
       <Text style={styles.detail}>Units: {item.units}</Text>
       <Text style={styles.detail}>Price: {item.price}</Text>
-      <Text style={styles.detail}>Opening: {item.openingDate}</Text>
-      <Text style={styles.detail}>Closing: {item.closingDate}</Text>
+      <Text style={styles.detail}>Opening: {new Date(item.openingDate).toDateString()} {new Date(item.openingDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+      <Text style={styles.detail}>Closing: {new Date(item.closingDate).toDateString()} {new Date(item.closingDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
 
       <View style={styles.actions}>
         <TouchableOpacity style={styles.editButton} onPress={() => handleEdit(item)}>
@@ -216,7 +451,7 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerTitle}>IPO Management</Text>
-            <Text style={styles.headerSubtitle}>{ipos.length} IPOs</Text>
+            <Text style={styles.headerSubtitle}>{ipos.filter(i => i.status === activeTab).length} {activeTab} IPOs</Text>
           </View>
           <TouchableOpacity 
             style={styles.settingsButton} 
@@ -225,11 +460,24 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
             <Ionicons name="settings-outline" size={28} color="white" />
           </TouchableOpacity>
         </View>
+
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          {['Open', 'Upcoming', 'Closed'].map((tab) => (
+            <TouchableOpacity 
+              key={tab} 
+              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* IPO List */}
       <FlatList
-        data={ipos}
+        data={ipos.filter(i => i.status === activeTab)}
         renderItem={renderIPO}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
@@ -268,42 +516,17 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
               placeholder="e.g., Nepal Infrastructure Bank"
             />
 
-            <Text style={styles.label}>Type</Text>
-            <View style={styles.typeButtons}>
-              {['IPO', 'FPO', 'Right Share', 'Debenture', 'Custom'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeButton, 
-                    (type === 'Custom' ? isCustomType : formData.type === type && !isCustomType) && styles.typeButtonActive
-                  ]}
-                  onPress={() => {
-                    if (type === 'Custom') {
-                      setIsCustomType(true);
-                    } else {
-                      setIsCustomType(false);
-                      setFormData({ ...formData, type });
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.typeButtonText, 
-                    (type === 'Custom' ? isCustomType : formData.type === type && !isCustomType) && styles.typeButtonTextActive
-                  ]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {isCustomType && (
-              <TextInput
-                style={[styles.input, { marginTop: 8 }]}
-                value={formData.customType}
-                onChangeText={(text) => setFormData({ ...formData, customType: text })}
-                placeholder="Enter custom type (e.g., Mutual Fund)"
-              />
-            )}
+            <TypeSelector 
+              types={types}
+              selectedType={formData.type}
+              onSelect={(type) => setFormData({ ...formData, type })}
+              onNewType={(newType) => {
+                if (!types.includes(newType)) {
+                  setTypes([...types, newType]);
+                }
+                setFormData({ ...formData, type: newType });
+              }}
+            />
 
             <Text style={styles.label}>Units *</Text>
             <TextInput
@@ -335,20 +558,20 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
               />
             </View>
 
-            <Text style={styles.label}>Opening Date *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.openingDate}
-              onChangeText={(text) => setFormData({ ...formData, openingDate: text })}
-              placeholder="e.g., 2024-12-15"
+            <NepaliDatePicker 
+              label="Opening Date"
+              date={formData.openingDate}
+              time={formData.openingTime}
+              onChange={(date) => setFormData({ ...formData, openingDate: date })}
+              onTimeChange={(time) => setFormData({ ...formData, openingTime: time })}
             />
 
-            <Text style={styles.label}>Closing Date *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.closingDate}
-              onChangeText={(text) => setFormData({ ...formData, closingDate: text })}
-              placeholder="e.g., 2024-12-20"
+            <NepaliDatePicker 
+              label="Closing Date"
+              date={formData.closingDate}
+              time={formData.closingTime}
+              onChange={(date) => setFormData({ ...formData, closingDate: date })}
+              onTimeChange={(time) => setFormData({ ...formData, closingTime: time })}
             />
 
             <Text style={styles.label}>Status</Text>
@@ -439,6 +662,30 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  tabs: {
+    flexDirection: 'row',
+    marginTop: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  activeTab: {
+    backgroundColor: 'white',
+  },
+  tabText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  activeTabText: {
+    color: '#6200EE',
   },
   type: {
     fontSize: 14,
@@ -598,6 +845,207 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // Selector & Modal Styles
+  selectorContainer: {
+    marginBottom: 16,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  dropdownTriggerText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dropdownModal: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    maxHeight: '60%',
+    padding: 16,
+  },
+  modalHeaderSmall: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 8,
+  },
+  modalTitleSmall: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  typeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f9f9f9',
+  },
+  typeItemText: {
+    fontSize: 16,
+    color: '#555',
+  },
+  typeItemActive: {
+    backgroundColor: '#f0e6ff',
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  typeItemTextActive: {
+    color: '#6200EE',
+    fontWeight: '600',
+  },
+  addTypeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  addTypeBtnText: {
+    color: '#6200EE',
+    fontWeight: '600',
+  },
+  addingContainer: {
+    marginTop: 10,
+  },
+  saveSmallBtn: {
+    backgroundColor: '#6200EE',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  saveSmallBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  // Date Picker Styles
+  datePickerContainer: {
+    marginBottom: 20,
+  },
+  dateHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 15,
+    padding: 2,
+  },
+  modeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 13,
+  },
+  modeBtnActive: {
+    backgroundColor: 'white',
+    elevation: 2,
+  },
+  modeBtnText: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '600',
+  },
+  modeBtnTextActive: {
+    color: '#6200EE',
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  yearInputWrap: { flex: 1.5 },
+  monthInputWrap: { flex: 2.5 },
+  dayInputWrap: { flex: 1.2 },
+  timeInputWrap: { flex: 1.8 },
+  tinyLabel: {
+    fontSize: 10,
+    color: '#888',
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  yearInput: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  dayInput: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  timeInput: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+  },
+  monthSelectorText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  monthModal: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    maxHeight: '70%',
+    padding: 10,
+  },
+  monthItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  monthItemText: {
+    fontSize: 16,
+    color: '#444',
+  },
+  monthItemTextActive: {
+    color: '#6200EE',
     fontWeight: 'bold',
   },
 });
