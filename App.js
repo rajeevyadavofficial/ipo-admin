@@ -5,7 +5,7 @@ import LoginScreen from './screens/LoginScreen';
 import IPOListScreen from './screens/IPOListScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
-import { API_BASE_URL } from './config';
+import { getApiBaseUrl } from './config';
 
 
 export default function App() {
@@ -19,12 +19,12 @@ export default function App() {
         <LoginScreen onLogin={() => setIsLoggedIn(true)} />
       ) : currentScreen === 'IPOList' ? (
         <IPOListScreen 
-          apiUrl={API_BASE_URL} 
+          apiUrl={getApiBaseUrl()} 
           onNavigate={(screen) => setCurrentScreen(screen)}
         />
       ) : (
         <SettingsScreen 
-          apiUrl={API_BASE_URL} 
+          apiUrl={getApiBaseUrl()} 
           onBack={() => setCurrentScreen('IPOList')}
         />
       )}

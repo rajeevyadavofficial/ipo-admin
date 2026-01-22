@@ -1,1 +1,4 @@
-export const API_BASE_URL = 'https://ipo-backend-zzjb.onrender.com/api';
+import { getApiBaseUrl as fetchUrl } from './utils/remoteConfig';
+
+export const API_BASE_URL = fetchUrl();
+export { fetchUrl as getApiBaseUrl };
