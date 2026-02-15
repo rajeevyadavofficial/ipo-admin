@@ -245,6 +245,8 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
   const [editingIPO, setEditingIPO] = useState(null);
   const [activeTab, setActiveTab] = useState('Open');
   const [types, setTypes] = useState(['IPO', 'FPO', 'Right Share', 'Debenture', 'Mutual Fund']);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState(null);
   const [formData, setFormData] = useState({
     company: '',
     type: 'IPO',
@@ -280,11 +282,37 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
       if (data.success) {
         setIpos(data.data);
       }
+      
+      // Also fetch last sync time
+      const settingsResp = await fetch(`${apiUrl}/admin/settings`);
+      const settingsData = await settingsResp.json();
+      if (settingsData.success && settingsData.data) {
+        setLastSynced(settingsData.data.lastSyncAt);
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch IPOs');
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`${apiUrl}/admin/sync-ipos`, { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        const { added, updated } = data.stats;
+        Alert.alert('Sync Complete', `Added: ${added}, Updated: ${updated}`);
+        fetchIPOs();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      Alert.alert('Sync Failed', error.message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -452,14 +480,30 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerTitle}>IPO Management</Text>
-            <Text style={styles.headerSubtitle}>{ipos.filter(i => i.status === activeTab).length} {activeTab} IPOs</Text>
+            <Text style={styles.headerSubtitle}>
+              {ipos.filter(i => i.status === activeTab).length} {activeTab} IPOs
+              {lastSynced && ` • Synced: ${new Date(lastSynced).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+            </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            onPress={() => onNavigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={28} color="white" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.syncButton} 
+              onPress={handleSync}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="sync-outline" size={24} color="white" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.settingsButton} 
+              onPress={() => onNavigate('Settings')}
+            >
+              <Ionicons name="settings-outline" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Tabs */}
@@ -630,6 +674,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  syncButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
   },
   settingsButton: {
     padding: 4,
