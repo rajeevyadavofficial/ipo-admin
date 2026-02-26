@@ -498,6 +498,12 @@ export default function IPOListScreen({ apiUrl, onNavigate }) {
               )}
             </TouchableOpacity>
             <TouchableOpacity 
+              style={styles.syncButton} 
+              onPress={() => onNavigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity 
               style={styles.settingsButton} 
               onPress={() => onNavigate('Settings')}
             >
